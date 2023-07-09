@@ -20,10 +20,10 @@ router.get('/users', usersController.getUsers);
 router.get('/users/me', usersController.getUserInfo);
 router.get('/users/:userId', validateUserId, usersController.getUserById);
 
-router.get('/movie', movieController.getMovie);
-router.post('/movie', validateCreateMovie, movieController.createMovie);
+router.get('/movies', movieController.getMovie);
+router.post('/movies', validateCreateMovie, movieController.createMovie);
 // eslint-disable-next-line no-whitespace-before-property
-router.delete('/movie/:movieId', validateMovieId, movieController. deleteMovieById);
+router.delete('/movies/movieId', validateMovieId, movieController. deleteMovieById);
 
 router.use('*', (req, res, next) => {
   next(new NotFoundError('Ой страница не найдена. (✖╭╮✖) '));
