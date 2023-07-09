@@ -12,7 +12,7 @@ const {
   errorLogger,
 } = require('./middlewares/logger');
 
-const { PORT = 3000, bd = 'mongodb://127.0.0.1:27017/bitfilmsdb' } = process.env;
+const { PORT = 3000, bd = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
 const app = express();
 app.use(cors());
 
@@ -40,6 +40,7 @@ app.use(errorLogger);
 
 app.use(errors());
 app.use(errorHandler);
+
 mongoose.connect(bd)
   .then(() => {
     // eslint-disable-next-line no-console
