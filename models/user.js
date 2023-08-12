@@ -4,37 +4,44 @@ const validator = require('validator');
 const Unauthorized = require('../errors/Unauthorized');
 
 const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    minlength: 2,
-    maxlength: 30,
-    required: true,
-  },
   email: {
     type: String,
-    required: true,
-    unique: true,
+    trim: true,
+    lowercase: true,
+    required: [true, 'Email не может быть пустым'],
+    unique: [true, 'Email занят другим пользователем'],
     validate: {
-      validator: (v) => validator.isEmail(v),
-      message: 'Incorrect email',
+      validator: (email) => validator.isEmail(email),
+      message: 'Некорректный email адрес',
     },
+  },
+  name: {
+    type: String,
+    minlength: [2, 'Имя пользователя должно быть не короче 2 символов'],
+    maxlength: [30, 'Имя пользователя должно быть не длиннее 30 символов'],
+    required: [true, 'Имя не может быть пустым']
   },
   password: {
     type: String,
-    required: true,
     select: false,
+    required: [true, 'Пароль не может быть пустым'],
   },
-});
-userSchema.statics.findUserByCredentials = function (email, password) {
-  return this.findOne({ email }).select('+password')
-    .orFail(new Unauthorized('Incorrect email or password.'))
-    .then((user) => Promise.all([user, bcrypt.compare(password, user.password)]))
-    .then(([user, passIsEqual]) => {
-      if (!passIsEqual) {
-        throw new Unauthorized('Incorrect email or password.');
-      }
+}, { versionKey: false });
 
-      return user;
+userSchema.statics.findUserByCredentials = function findUserByCredentials(email, password) {
+  return this.findOne({ email })
+    .select('+password')
+    .then((user) => {
+      if (!user) {
+        return Promise.reject(new Unauthorized('Неправильная почта или неверный пароль'));
+      }
+      return bcrypt.compare(password, user.password)
+        .then((matched) => {
+          if (!matched) {
+            return Promise.reject(new Unauthorized('Неправильная почта или неверный пароль'));
+          }
+          return user;
+        });
     });
 };
 
