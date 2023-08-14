@@ -1,34 +1,59 @@
-const express = require('express');
-const helmet = require('helmet');
-const mongoose = require('mongoose');
-const cookieParser = require('cookie-parser');
-const celebrateErrors = require('celebrate').errors;
-const { requestLogger, errorLogger } = require('./middlewares/logger');
-const router = require('./routes/index');
-const filterCors = require('./middlewares/cors');
-const handleServerError = require('./middlewares/handleServerError');
-const rateLimiter = require('./middlewares/rateLimiter');
-
-// eslint-disable-next-line import/newline-after-import
 require('dotenv').config();
-const { PORT = 3000, MONGO_DB_URI = 'mongodb://127.0.0.1:27017/bitfilmsdb' } = process.env;
-mongoose.connect(MONGO_DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+const express = require('express');
+const mongoose = require('mongoose');
+const helmet = require('helmet');
+const cors = require('cors');
+const { errors } = require('celebrate');
+const rateLimit = require('express-rate-limit');
+const router = require('./routes/routes');
+const errorHandler = require('./middlewares/errorHandler');
+const {
+  requestLogger,
+  errorLogger,
+} = require('./middlewares/logger');
 
+const { PORT = 3000, bd = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
 const app = express();
-app.use(rateLimiter);
-app.use(requestLogger);
-app.use(helmet());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(filterCors);
+app.use(cors());
 
-/* Все роуты */
+app.get('/crash-test', () => {
+  setTimeout(() => {
+    throw new Error('Сервер сейчас упадёт');
+  }, 0);
+});
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+app.use(requestLogger);
+app.use(limiter);
+app.use(express.json());
+app.use(helmet());
+
 app.use(router);
 
 app.use(errorLogger);
-app.use(celebrateErrors());
-app.use(handleServerError);
 
-// eslint-disable-next-line eol-last
-app.listen(PORT);
+app.use(errors());
+app.use(errorHandler);
+
+mongoose.connect(bd)
+  .then(() => {
+    // eslint-disable-next-line no-console
+    console.log('Подключение к базе состоялось');
+    app.listen(PORT, () => {
+      // eslint-disable-next-line no-console
+      console.log(`Приложение работает на порте ${PORT}`);
+    });
+  })
+
+  .catch((err) => {
+    // eslint-disable-next-line no-console
+    console.log('Ошибка подключения к базе', err);
+
+    process.exit();
+  });

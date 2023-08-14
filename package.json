@@ -1,44 +1,36 @@
 {
   "name": "movies-explorer-api",
   "version": "1.0.0",
-  "description": "",
-  "main": "App.js",
+  "description": "Проект Movie бэкенд",
+  "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "dev": "nodemon app.js",
     "lint": "npx eslint .",
-    "dev": "nodemon node app.js",
-    "debug": "node --inspect app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint:fix": "npx eslint . --fix"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/alex-schlecht/movies-explorer-api.git"
-  },
-  "author": "",
+  "keywords": [],
+  "author": "Кулишин Алексей",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/alex-schlecht/movies-explorer-api/issues"
+  "devDependencies": {
+    "eslint": "^8.41.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "nodemon": "^1.14.9"
   },
-  "homepage": "https://github.com/alex-schlecht/movies-explorer-api#readme",
   "dependencies": {
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^5.0.1",
     "celebrate": "^15.0.1",
-    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "depcheck": "^1.4.3",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "express-rate-limit": "^6.7.1",
+    "express-rate-limit": "^6.7.0",
     "express-winston": "^4.2.0",
     "helmet": "^7.0.0",
-    "joi": "^17.9.2",
-    "jsonwebtoken": "^9.0.1",
-    "mongoose": "^7.3.4",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.2.2",
     "validator": "^13.9.0",
-    "winston": "^3.10.0"
-  },
-  "devDependencies": {
-    "eslint": "^8.44.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.27.5",
-    "nodemon": "^3.0.1"
+    "winston": "^3.9.0"
   }
 }

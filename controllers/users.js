@@ -1,101 +1,78 @@
-const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const http2 = require('http2').constants;
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const NotFoundError = require('../errors/NotFoundError');
+const BadRequestError = require('../errors/BadRequestError');
 const Conflict = require('../errors/Conflict');
-const { errorHandler } = require('../utils/errorHandler');
-
-require('dotenv').config();
 
 const { NODE_ENV, JWT_SECRET } = process.env;
-const JwtToken = NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret';
 
-module.exports.getUserInfo = (req, res, next) => {
-  const { _id } = req.user;
-  User.findById(_id)
-    .orFail()
-    .then((user) => res.send(user))
-    .catch((err) => errorHandler(err, res, next));
+const getUsers = (req, res, next) => {
+  User.find({})
+    .then((users) => res.send(users))
+    .catch(next);
 };
 
-module.exports.createUser = (req, res, next) => {
+const getUserInfo = (req, res, next) => {
+  User.findById(req.user._id)
+    .then((user) => res.send(user))
+    .catch(next);
+};
+
+const getUserById = (req, res, next) => {
+  User.findById(req.params.userId)
+    .orFail(new NotFoundError('Пользователь не авторизован.'))
+    .then((users) => res.send(users))
+    .catch((err) => {
+      if (err instanceof mongoose.Error.CastError) {
+        return next(new BadRequestError('Введены не верные данные.'));
+      }
+      return next(err);
+    });
+};
+
+const createUser = (req, res, next) => {
   const {
-    name,
-    email,
-    password,
+    name, email, password,
   } = req.body;
+
   bcrypt.hash(password, 10)
     .then((hash) => User.create({
-      name,
-      email,
-      password: hash,
+      name, email, password: hash,
     }))
-    .then((user) => {
-      res.status(201).send({
-        name: user.name,
-        email: user.email,
-        _id: user._id,
-      });
-    })
+    .then((user) => res.status(http2.HTTP_STATUS_CREATED).send({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+    }))
     .catch((err) => {
-      if (err.code === 11000) {
-        return next(new Conflict('Такой email уже зарегистрирован'));
+      if (err instanceof mongoose.Error.ValidationError) {
+        return next(new BadRequestError('Введены не верные данные.'));
       }
-      return errorHandler(err, res, next);
+      if (err.name === 'MongoServerError' && err.code === 11000) { // duplicate key error
+        return next(new Conflict('Неправильный пароль или email.'));
+      }
+      return next(err);
     });
 };
 
-module.exports.login = (req, res, next) => {
-  const { email, password } = req.body;
-  User.findUserByCredentials(email, password, next)
+const login = (req, res, next) => {
+  User.findUserByCredentials(req.body.email, req.body.password)
     .then((user) => {
-      const token = jwt.sign(
-        { _id: user._id },
-        JwtToken,
-        { expiresIn: '7d' },
-      );
-      res
-        .cookie('jwt', token, {
-          maxAge: 3600000 * 24 * 7,
-          httpOnly: true,
-        }).send({ 
-          email: user.email, 
-          name: user.name 
-        });
-    })
-    .catch((err) => next(err));
-};
-
-module.exports.updateUserProfile = (req, res, next) => {
-  const { name, email } = req.body;
-  const { _id } = req.user;
-
-  User.findByIdAndUpdate(
-    _id,
-    { name, email },
-    {
-      new: true,
-      runValidators: true
-    }
-  )
-    .then((user) => {
-      res.status(200)
-      .send({
-        _id: user._id,
-        email: user.email,
-        name: user.name
-      });
+      const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret', { expiresIn: '7d' });
+      res.send({ token });
     })
     .catch((err) => {
-      if (err.code === 11000) {
-        return next(new Conflict('Такой email уже зарегистрирован'));
-      }
-      return errorHandler(err, res, next);
+      next(err);
     });
 };
 
-module.exports.logout = (req, res) => {
-  res.cookie('jwt', '', {
-    maxAge: 0,
-    httpOnly: true,
-  }).send({});
+module.exports = {
+  getUsers,
+  getUserInfo,
+  getUserById,
+  createUser,
+  login,
 };
