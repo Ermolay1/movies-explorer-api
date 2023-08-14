@@ -1,15 +1,11 @@
-const http2 = require('http2').constants;
+const SERVER_ERROR = require('../utils/const');
 
+// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  const { statusCode = http2.HTTP_STATUS_INTERNAL_SERVER_ERROR, message } = err;
-
-  res.status(statusCode).send({
-    message: statusCode === 500
-      ? 'Internal Server Error has occured'
-      : message,
-  });
-
-  next();
+  const { statusCode = SERVER_ERROR.statusCode, message = SERVER_ERROR.message } = err;
+  res.status(statusCode).send({ message });
 };
 
-module.exports = errorHandler;
+module.exports = {
+  errorHandler,
+};

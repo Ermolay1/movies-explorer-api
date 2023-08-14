@@ -1,33 +1,42 @@
 const mongoose = require('mongoose');
-const http2 = require('http2').constants;
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/user');
-const NotFoundError = require('../errors/NotFoundError');
-const BadRequestError = require('../errors/BadRequestError');
-const Conflict = require('../errors/Conflict');
+const { signToken } = require('../utils/jwtAuth');
+const ValidationError = require('../errors/ValidationError');
+const DuplicateKeyError = require('../errors/DuplicateKeyError');
+const UnauthorizedError = require('../errors/UnauthorizedError');
+const DocumentNotFoundError = require('../errors/DocumentNotFoundError');
+const {
+  BAD_REQUEST,
+  DUPLICATE_KEY_ERROR,
+  UNAUTHORIZED,
+  NOT_FOUND,
+} = require('../utils/const');
 
-const { NODE_ENV, JWT_SECRET } = process.env;
+const duplicateKeyError = 11000;
 
-const getUsers = (req, res, next) => {
-  User.find({})
-    .then((users) => res.send(users))
-    .catch(next);
-};
-
-const getUserInfo = (req, res, next) => {
+const getMyUser = (req, res, next) => {
   User.findById(req.user._id)
-    .then((user) => res.send(user))
-    .catch(next);
+    .orFail(() => {
+      next(new DocumentNotFoundError(NOT_FOUND.message.userNoExist));
+    })
+    .then((user) => {
+      res.status(200).send(user);
+    })
+    .catch((err) => {
+      next(err);
+    });
 };
 
-const getUserById = (req, res, next) => {
-  User.findById(req.params.userId)
-    .orFail(new NotFoundError('Пользователь не авторизован.'))
-    .then((users) => res.send(users))
+const updateUser = (req, res, next) => {
+  User.findByIdAndUpdate(req.user._id, req.body, { new: true, runValidators: true })
+    .orFail(() => {
+      next(new DocumentNotFoundError(NOT_FOUND.message.userNoExist));
+    })
+    .then((user) => res.status(200).send(user))
     .catch((err) => {
-      if (err instanceof mongoose.Error.CastError) {
-        return next(new BadRequestError('Введены не верные данные.'));
+      if (err instanceof mongoose.Error.ValidationError) {
+        return next(new ValidationError(BAD_REQUEST.message.updateUser));
       }
       return next(err);
     });
@@ -35,44 +44,52 @@ const getUserById = (req, res, next) => {
 
 const createUser = (req, res, next) => {
   const {
-    name, email, password,
+    email,
+    password,
+    name,
   } = req.body;
 
   bcrypt.hash(password, 10)
     .then((hash) => User.create({
-      name, email, password: hash,
+      email,
+      password: hash,
+      name,
     }))
-    .then((user) => res.status(http2.HTTP_STATUS_CREATED).send({
+    .then((user) => res.status(201).send({
       _id: user._id,
       name: user.name,
       email: user.email,
     }))
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
-        return next(new BadRequestError('Введены не верные данные.'));
+        return next(new ValidationError(BAD_REQUEST.message.createUser));
       }
-      if (err.name === 'MongoServerError' && err.code === 11000) { // duplicate key error
-        return next(new Conflict('Неправильный пароль или email.'));
+      if (err.code === duplicateKeyError) {
+        return next(new DuplicateKeyError(DUPLICATE_KEY_ERROR.message.createUser));
       }
       return next(err);
     });
 };
 
 const login = (req, res, next) => {
-  User.findUserByCredentials(req.body.email, req.body.password)
-    .then((user) => {
-      const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret', { expiresIn: '7d' });
-      res.send({ token });
+  const { email, password } = req.body;
+
+  User.findOne({ email }).select('+password')
+    .orFail(() => next(new UnauthorizedError(UNAUTHORIZED.message.login)))
+    .then((user) => Promise.all([user, bcrypt.compare(password, user.password)]))
+    .then(([user, matched]) => {
+      if (!matched) {
+        return next(new UnauthorizedError(UNAUTHORIZED.message.login));
+      }
+      const token = signToken({ _id: user._id });
+      return res.status(200).send({ token });
     })
-    .catch((err) => {
-      next(err);
-    });
+    .catch((err) => next(err));
 };
 
 module.exports = {
-  getUsers,
-  getUserInfo,
-  getUserById,
+  getMyUser,
+  updateUser,
   createUser,
   login,
 };
