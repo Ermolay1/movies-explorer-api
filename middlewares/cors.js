@@ -1,6 +1,9 @@
 const allowedCors = [
   'https://movie.diplom.student.nomoredomains.work',
   'http://movie.diplom.student.nomoredomains.work',
+  'movie.diplom.student.nomoredomains.work',
+  'http://api.movie.diplom.student.nomoredomains.work',
+  'https://api.movie.diplom.student.nomoredomains.work',
   'https://localhost:3000',
   'http://localhost:3000',
   'https://localhost:3001',
