@@ -1,36 +1,41 @@
 {
   "name": "movies-explorer-api",
   "version": "1.0.0",
-  "description": "Проект Movie бэкенд",
-  "main": "app.js",
+  "description": "",
+  "main": "./app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "lint": "npx eslint .",
-    "lint:fix": "npx eslint . --fix"
+    "start": "node ./app.js",
+    "dev": "nodemon ./app.js",
+    "lint": "npx eslint ./"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fevralkolesnik/movies-explorer-api.git"
   },
   "keywords": [],
-  "author": "Кулишин Алексей",
+  "author": "fevralkolesnikova",
   "license": "ISC",
-  "devDependencies": {
-    "eslint": "^8.41.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.26.0",
-    "nodemon": "^1.14.9"
+  "bugs": {
+    "url": "https://github.com/fevralkolesnik/movies-explorer-api/issues"
   },
+  "homepage": "https://github.com/fevralkolesnik/movies-explorer-api#readme",
   "dependencies": {
-    "bcrypt": "^5.0.1",
+    "bcryptjs": "^2.4.3",
     "celebrate": "^15.0.1",
-    "cors": "^2.8.5",
-    "depcheck": "^1.4.3",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "express-rate-limit": "^6.7.0",
+    "express-rate-limit": "^6.7.1",
     "express-winston": "^4.2.0",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.0",
-    "mongoose": "^7.2.2",
+    "mongoose": "^7.3.1",
     "validator": "^13.9.0",
     "winston": "^3.9.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.44.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "nodemon": "^2.0.22"
   }
 }
