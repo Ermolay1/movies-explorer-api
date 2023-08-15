@@ -2,41 +2,42 @@
   "name": "movies-explorer-api",
   "version": "1.0.0",
   "description": "",
-  "main": "./app.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node ./app.js",
-    "dev": "nodemon ./app.js",
-    "lint": "npx eslint ./"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "lint": "npx eslint ."
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fevralkolesnik/movies-explorer-api.git"
+    "url": "git+https://github.com/ia-stepanov/movies-explorer-api.git"
   },
-  "keywords": [],
-  "author": "fevralkolesnikova",
+  "keywords": [
+    "yandex-praktikum"
+  ],
+  "author": "Igor Stepanov",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/fevralkolesnik/movies-explorer-api/issues"
+    "url": "https://github.com/ia-stepanov/movies-explorer-api/issues"
   },
-  "homepage": "https://github.com/fevralkolesnik/movies-explorer-api#readme",
+  "homepage": "https://github.com/ia-stepanov/movies-explorer-api#readme",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.2",
     "celebrate": "^15.0.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-rate-limit": "^6.7.1",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.3",
     "express-winston": "^4.2.0",
-    "helmet": "^7.0.0",
-    "jsonwebtoken": "^9.0.0",
-    "mongoose": "^7.3.1",
-    "validator": "^13.9.0",
-    "winston": "^3.9.0"
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^6.2.3",
+    "validator": "^13.7.0",
+    "winston": "^3.6.0"
   },
   "devDependencies": {
-    "eslint": "^8.44.0",
+    "eslint": "^8.10.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.27.5",
-    "nodemon": "^2.0.22"
+    "eslint-plugin-import": "^2.25.4",
+    "nodemon": "^2.0.15"
   }
 }

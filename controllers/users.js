@@ -1,94 +1,78 @@
-const mongoose = require('mongoose');
+const { JWT_SECRET, NODE_ENV } = process.env;
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+
 const User = require('../models/user');
-const { signToken } = require('../utils/jwtAuth');
-const ValidationError = require('../errors/ValidationError');
-const DuplicateKeyError = require('../errors/DuplicateKeyError');
-const UnauthorizedError = require('../errors/UnauthorizedError');
-const DocumentNotFoundError = require('../errors/DocumentNotFoundError');
-const {
-  BAD_REQUEST,
-  DUPLICATE_KEY_ERROR,
-  UNAUTHORIZED,
-  NOT_FOUND,
-} = require('../utils/const');
+const BadRequest = require('../errors/BadRequest');
+const NotFound = require('../errors/NotFoundError');
+const ConflictError = require('../errors/ConflictError');
 
-const duplicateKeyError = 11000;
+const getUser = (req, res, next) => {
+  const userId = req.user._id;
 
-const getMyUser = (req, res, next) => {
-  User.findById(req.user._id)
+  User.findById(userId)
     .orFail(() => {
-      next(new DocumentNotFoundError(NOT_FOUND.message.userNoExist));
+      throw new NotFound('Пользователь по указанному _id не найден');
     })
-    .then((user) => {
-      res.status(200).send(user);
-    })
-    .catch((err) => {
-      next(err);
-    });
+    .then((user) => res.send(user))
+    .catch(next);
 };
 
 const updateUser = (req, res, next) => {
-  User.findByIdAndUpdate(req.user._id, req.body, { new: true, runValidators: true })
+  const { name, email } = req.body;
+  const userId = req.user._id;
+
+  User.findByIdAndUpdate(userId, { name, email }, { new: true, runValidators: true })
     .orFail(() => {
-      next(new DocumentNotFoundError(NOT_FOUND.message.userNoExist));
+      throw new NotFound('Пользователь с указанным _id не найден');
     })
-    .then((user) => res.status(200).send(user))
+    .then((user) => res.send(user))
     .catch((err) => {
-      if (err instanceof mongoose.Error.ValidationError) {
-        return next(new ValidationError(BAD_REQUEST.message.updateUser));
+      if (err.name === 'ValidationError' || err.name === 'CastError') {
+        throw new BadRequest('Переданы некорректные данные');
       }
-      return next(err);
-    });
+      if (err.code === 11000) {
+        throw new ConflictError('Пользователь с таким email уже существует');
+      }
+      next(err);
+    })
+    .catch(next);
 };
 
 const createUser = (req, res, next) => {
-  const {
-    email,
-    password,
-    name,
-  } = req.body;
+  const { name, email, password } = req.body;
 
   bcrypt.hash(password, 10)
     .then((hash) => User.create({
-      email,
-      password: hash,
-      name,
+      name, email, password: hash,
     }))
-    .then((user) => res.status(201).send({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-    }))
+    .then((({ _id }) => User.findById(_id)))
+    .then((user) => res.send(user))
     .catch((err) => {
-      if (err instanceof mongoose.Error.ValidationError) {
-        return next(new ValidationError(BAD_REQUEST.message.createUser));
+      if (err.name === 'ValidationError') {
+        throw new BadRequest('Переданы некорректные данные');
       }
-      if (err.code === duplicateKeyError) {
-        return next(new DuplicateKeyError(DUPLICATE_KEY_ERROR.message.createUser));
+      if (err.code === 11000) {
+        throw new ConflictError('Пользователь с таким email уже существует');
       }
-      return next(err);
-    });
+      next(err);
+    })
+    .catch(next);
 };
 
 const login = (req, res, next) => {
   const { email, password } = req.body;
 
-  User.findOne({ email }).select('+password')
-    .orFail(() => next(new UnauthorizedError(UNAUTHORIZED.message.login)))
-    .then((user) => Promise.all([user, bcrypt.compare(password, user.password)]))
-    .then(([user, matched]) => {
-      if (!matched) {
-        return next(new UnauthorizedError(UNAUTHORIZED.message.login));
-      }
-      const token = signToken({ _id: user._id });
-      return res.status(200).send({ token });
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, `${NODE_ENV === 'production' ? JWT_SECRET : 'yandex-praktikum'}`, { expiresIn: '7d' });
+      res.send({ token });
     })
-    .catch((err) => next(err));
+    .catch(next);
 };
 
 module.exports = {
-  getMyUser,
+  getUser,
   updateUser,
   createUser,
   login,
