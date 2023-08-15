@@ -1,60 +1,50 @@
-const mongoose = require('mongoose');
 const Movie = require('../models/movie');
-const DocumentNotFoundError = require('../errors/DocumentNotFoundError');
-const ValidationError = require('../errors/ValidationError');
+const BadRequest = require('../errors/BadRequest');
+const NotFound = require('../errors/NotFoundError');
 const ForbiddenError = require('../errors/ForbiddenError');
-const { NOT_FOUND, BAD_REQUEST, FORBIDDEN } = require('../utils/const');
 
 const getMovies = (req, res, next) => {
   Movie.find({ owner: req.user._id })
-    .orFail()
     .then((movies) => {
-      res.status(200).send(movies);
-    })
-    .catch((err) => {
-      if (err instanceof mongoose.Error.DocumentNotFoundError) {
-        res.status(200).send([]);
+      if (!movies) {
+        throw new NotFound('Данные не найдены!');
       }
-      return next(err);
-    });
+      res.send(movies);
+    })
+    .catch(next);
 };
 
 const createMovie = (req, res, next) => {
-  const newMovie = req.body;
+  const owner = req.user._id;
 
-  Movie.create({ ...newMovie, owner: req.user._id })
-    .then((movie) => res.status(201).send(movie))
+  Movie.create({ owner, ...req.body })
+    .then((movie) => res.send(movie))
     .catch((err) => {
-      if (err instanceof mongoose.Error.ValidationError) {
-        return next(new ValidationError(BAD_REQUEST.message.createMovie));
+      if (err.name === 'ValidationError') {
+        throw new BadRequest('Переданы некорректные данные');
       }
-      return next(err);
-    });
+      next(err);
+    })
+    .catch(next);
 };
 
 const deleteMovie = (req, res, next) => {
+  const userId = req.user._id;
   const { movieId } = req.params;
 
   Movie.findById(movieId)
-    .orFail()
-    .then((movie) => {
-      if (movie.owner.toString() !== req.user._id) {
-        return next(new ForbiddenError(FORBIDDEN.message.deleteMovie));
-      }
-      return Movie.deleteOne()
-        .then(() => {
-          res.status(200).send(movie);
-        });
+    .orFail(() => {
+      throw new NotFound('Фильм с указанным _id не найден');
     })
-    .catch((err) => {
-      if (err instanceof mongoose.Error.DocumentNotFoundError) {
-        return next(new DocumentNotFoundError(NOT_FOUND.message.deleteMovie));
+    .then((movie) => {
+      if (movie.owner.toString() === userId) {
+        return Movie.findByIdAndRemove(movieId)
+          .then((deletedMovie) => res.send(deletedMovie))
+          .catch(next);
       }
-      if (err instanceof mongoose.Error.CastError) {
-        return next(new ValidationError(BAD_REQUEST.message.deleteMovie));
-      }
-      return next(err);
-    });
+      throw new ForbiddenError('В доступе отказано');
+    })
+    .catch(next);
 };
 
 module.exports = {
